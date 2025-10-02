@@ -1,0 +1,13 @@
+version: '3.3'
+
+services:
+  era5_dl:
+    image: mullenkamp/wrf-era5-dl:1.0
+    ## The container will run as user 1000 and group 1000. 
+    ## If this isn't your user id, then uncomment the line below and assign it or in the shell.
+    # user: ${UID}:${GID}
+    volumes:
+        - "~/git/wrf-repos/era5-download/parameters.toml:/parameters.toml"
+        - '~/data/ncar/tests/clipped:/data/clipped'
+        # - '~/data/ncar/tests/download:/data/download'
+

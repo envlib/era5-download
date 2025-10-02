@@ -1,0 +1,20 @@
+[source]
+bucket = 'nsf-ncar-era5' # Do not change
+
+start_date = "1940-01-01"
+end_date = "1940-01-01"
+n_tasks = 8 # The number of processing tasks
+
+[source.bounds]
+min_lon = 120
+max_lon = 200
+min_lat = -60
+max_lat = -15
+
+[remote]
+## Uncomment the following lines and fill out appropriately to upload the results to an S3 system
+# endpoint_url = 'https://s3.ca-west-1.s4.mega.io'
+# access_key_id = ''
+# access_key = ''
+# bucket = 'data'
+# path = 'ncar/era5/'

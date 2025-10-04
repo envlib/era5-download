@@ -16,9 +16,11 @@ RUN mkdir /data/download
 RUN mkdir /data/clipped
 RUN mkdir /data/output
 RUN chown -R 1000:1000 /data
+RUN chmod -R 777 /data
 
 COPY download_era5.py ./
 RUN chown 1000:1000 ./download_era5.py
+RUN chmod -R 777 ./download_era5.py
 
 USER appuser
 

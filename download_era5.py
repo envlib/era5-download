@@ -197,6 +197,8 @@ def query_source(config_path, start_date, end_date):
         names_str = ' --include '.join(names_set)
         print(product)
 
+        t1 = pendulum.now()
+
         if 'pl' in product and False: # Takes too long for many years
             interval = pendulum.interval(start_date, end_date)
             for month in interval.range('months'):
@@ -220,6 +222,10 @@ def query_source(config_path, start_date, end_date):
                     src_files.add(base_path + key_name)
             else:
                 src_files.update(parse_stdout_files(p.stdout, start_date, end_date, base_path))
+
+        t2 = pendulum.now()
+
+        print(round((t2 - t1).total_seconds()))
 
     return src_files
 

@@ -195,11 +195,13 @@ def query_source(config_path, start_date, end_date):
     for product, names in ncar_era5_names.items():
         names_set = set('*.' + v + '.*' for v in names.values())
         names_str = ' --include '.join(names_set)
+        print(product)
 
-        if 'pl' in product:
+        if 'pl' in product and False: # Takes too long for many years
             interval = pendulum.interval(start_date, end_date)
             for month in interval.range('months'):
                 date_str = month.format('YYYYMM')
+                print(month)
 
                 base_path = f'{product}/{date_str}/'
 

@@ -9,6 +9,6 @@ services:
     volumes:
         - "~/git/wrf-repos/era5-download/parameters.toml:/parameters.toml"
         - '~/data/ncar/tests/output:/data/output'
-        - '~/data/ncar/tests/clipped:/data/clipped'
-        - '~/data/ncar/tests/download:/data/download'
+        # - '~/data/ncar/tests/clipped:/data/clipped'
+        # - '~/data/ncar/tests/download:/data/download'
 

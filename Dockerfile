@@ -14,6 +14,7 @@ RUN groupadd --gid 1000 appgroup && \
 RUN mkdir /data
 RUN mkdir /data/download
 RUN mkdir /data/clipped
+RUN mkdir /data/output
 RUN chown -R 1000:1000 /data
 
 COPY download_era5.py ./

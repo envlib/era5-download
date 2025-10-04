@@ -31,38 +31,40 @@ with open(base_path.joinpath("parameters.toml"), "rb") as f:
     params = tomllib.load(f)
 
 source = params['source']
+src_path = pathlib.Path(source.pop('path'))
 remote = params['remote']
 
 data_path = pathlib.Path('/data')
+# data_path = pathlib.Path('/home/mike/data/ncar/tests')
 
-if 'download_path' in source:
-    dl_path = pathlib.Path(source['download_path'])
+if 'download_path' in params:
+    dl_path = pathlib.Path(params['download_path'])
 else:
     dl_path = pathlib.Path('/data/download')
 
-if 'clipped_path' in source:
-    clip_path = pathlib.Path(source['clipped_path'])
+if 'clipped_path' in params:
+    clip_path = pathlib.Path(params['clipped_path'])
 else:
     clip_path = pathlib.Path('/data/clipped')
 
 dl_path.mkdir(parents=True, exist_ok=True)
 clip_path.mkdir(parents=True, exist_ok=True)
 
-src_bucket = source['bucket']
-
-bounds = source['bounds']
+bounds = params['bounds']
 min_lon = bounds['min_lon']
 max_lon = bounds['max_lon']
 min_lat = bounds['min_lat']
 max_lat = bounds['max_lat']
 
+dates = params['dates']
+
 try:
-    start_date = pendulum.parse(source['start_date']).date()
+    start_date = pendulum.parse(dates['start_date']).date()
 except:
     start_date = pendulum.date(1940, 1, 1)
 
 try:
-    end_date = pendulum.parse(source['end_date']).date()
+    end_date = pendulum.parse(dates['end_date']).date()
 except:
     end_date = pendulum.today().date()
 
@@ -105,56 +107,64 @@ ncar_era5_invariant_names = {
     }
 
 ncar_era5_names = {
-    'e5.oper.an.sfc/': ncar_era5_sfc_names,
-    'e5.oper.an.pl/': ncar_era5_pl_names,
-    'e5.oper.invariant/': ncar_era5_invariant_names,
+    'e5.oper.an.sfc': ncar_era5_sfc_names,
+    'e5.oper.an.pl': ncar_era5_pl_names,
+    'e5.oper.invariant': ncar_era5_invariant_names,
     }
 
 clip_str_format = 'ncks -O -4 -L 3 -d latitude,{min_lat:.1f},{max_lat:.1f} -d longitude,{min_lon:.1f},{max_lon:.1f} {dl_file_path} {clip_file_path}'
 
 
+# aws_config = {
+#     'type': 's3',
+#     'provider': 'AWS',
+#     'env_auth': 'false',
+#     'region': 'us-west-2',
+#     }
+
 ######################################################
 ### functions
 
 
-def create_rclone_config(name, data_path, access_key_id=None, access_key=None, endpoint_url=None, download_url=None):
+def create_rclone_config(name, config_path, config_dict):
     """
 
     """
-    config_dict = {}
-    if isinstance(access_key_id, str):
-        if isinstance(endpoint_url, str):
-            if isinstance(download_url, str) or 'backblazeb2' in endpoint_url:
-                type_ = 'b2'
-                config_dict['account'] = access_key_id
-                config_dict['key'] = access_key
-                config_dict['hard_delete'] = 'true'
-                if isinstance(download_url, str):
-                    config_dict['download_url'] = download_url
-            else:
-                type_ = 's3'
-                if 'mega' in endpoint_url:
-                    provider = 'Mega'
-                else:
-                    provider = 'Other'
-                config_dict['provider'] = provider
-                config_dict['access_key_id'] = access_key_id
-                config_dict['secret_access_key'] = access_key
-                config_dict['endpoint'] = endpoint_url
-        else:
-            type_ = 's3'
-            config_dict['provider'] = 'AWS'
-            config_dict['access_key_id'] = access_key_id
-            config_dict['secret_access_key'] = access_key
-    else:
-        type_ = 's3'
-        config_dict['provider'] = 'AWS'
-        config_dict['env_auth'] = 'false'
-        config_dict['region'] = 'us-west-2'
+    # config_dict = {}
+    # if isinstance(access_key_id, str):
+    #     if isinstance(endpoint_url, str):
+    #         if isinstance(download_url, str) or 'backblazeb2' in endpoint_url:
+    #             type_ = 'b2'
+    #             config_dict['account'] = access_key_id
+    #             config_dict['key'] = access_key
+    #             config_dict['hard_delete'] = 'true'
+    #             if isinstance(download_url, str):
+    #                 config_dict['download_url'] = download_url
+    #         else:
+    #             type_ = 's3'
+    #             if 'mega' in endpoint_url:
+    #                 provider = 'Mega'
+    #             else:
+    #                 provider = 'Other'
+    #             config_dict['provider'] = provider
+    #             config_dict['access_key_id'] = access_key_id
+    #             config_dict['secret_access_key'] = access_key
+    #             config_dict['endpoint'] = endpoint_url
+    #     else:
+    #         type_ = 's3'
+    #         config_dict['provider'] = 'AWS'
+    #         config_dict['access_key_id'] = access_key_id
+    #         config_dict['secret_access_key'] = access_key
+    # else:
+    #     type_ = 's3'
+    #     config_dict['provider'] = 'AWS'
+    #     config_dict['env_auth'] = 'false'
+    #     config_dict['region'] = 'us-west-2'
 
-    config_list = [f'{k}={v}' for k, v in config_dict.items()]
+    type_ = config_dict['type']
+    config_list = [f'{k}={v}' for k, v in config_dict.items() if k != 'type']
     config_str = ' '.join(config_list)
-    config_path = data_path.joinpath('rclone.config')
+    config_path = config_path.joinpath('rclone.config')
     cmd_str = f'rclone config create {name} {type_} {config_str} --config={config_path} --non-interactive --obscure'
     cmd_list = shlex.split(cmd_str)
     p = subprocess.run(cmd_list, capture_output=True, text=True, check=True)
@@ -162,12 +172,62 @@ def create_rclone_config(name, data_path, access_key_id=None, access_key=None, e
     return config_path
 
 
+def parse_stdout_files(stdout, start_date, end_date, base_path):
+    """
+
+    """
+    src_files = set()
+    for key_name in stdout.strip('\n').split('\n'):
+        dates_str = key_name.split('.')[-2].split('_')
+        file_start_date = pendulum.from_format(dates_str[0], 'YYYYMMDDHH').date()
+        file_end_date = pendulum.from_format(dates_str[1], 'YYYYMMDDHH').date()
+        if (file_end_date >= start_date) and (file_start_date <= end_date):
+            src_files.add(base_path + key_name)
+
+    return src_files
+
+
+def query_source(config_path, start_date, end_date):
+    """
+
+    """
+    src_files = set()
+    for product, names in ncar_era5_names.items():
+        names_set = set('*.' + v + '.*' for v in names.values())
+        names_str = ' --include '.join(names_set)
+
+        if 'pl' in product:
+            interval = pendulum.interval(start_date, end_date)
+            for month in interval.range('months'):
+                date_str = month.format('YYYYMM')
+
+                base_path = f'{product}/{date_str}/'
+
+                cmd_str = f'rclone lsf dl:{src_path}/{base_path} -R --config={config_path} --files-only --include {names_str} --fast-list'
+                cmd_list = shlex.split(cmd_str)
+                p = subprocess.run(cmd_list, capture_output=True, text=True, check=False)
+                src_files.update(parse_stdout_files(p.stdout, start_date, end_date, base_path))
+        else:
+            base_path = f'{product}/'
+
+            cmd_str = f'rclone lsf dl:{src_path}/{base_path} -R --config={config_path} --files-only --include {names_str} --fast-list'
+            cmd_list = shlex.split(cmd_str)
+            p = subprocess.run(cmd_list, capture_output=True, text=True, check=False)
+            if 'invariant' in product:
+                for key_name in p.stdout.strip('\n').split('\n'):
+                    src_files.add(base_path + key_name)
+            else:
+                src_files.update(parse_stdout_files(p.stdout, start_date, end_date, base_path))
+
+    return src_files
+
+
 def download_file(key, dl_path, config_path):
     """
 
     """
-    src_str = f's3_dl:{src_bucket}/{key}'
-    cmd_str = f'rclone copy {src_str} {str(dl_path)} --config={config_path}'
+    src_str = f'dl:{src_path}/{key}'
+    cmd_str = f'rclone copy {src_str} {dl_path} --config={config_path}'
     cmd_list = shlex.split(cmd_str)
     p = subprocess.run(cmd_list, capture_output=True, text=True, check=False)
     if p.stderr != '':
@@ -198,7 +258,7 @@ def clip_file(key, dl_path, clip_path, min_lon, max_lon, min_lat, max_lat):
         return True
 
 
-def upload_file(key, clip_path, config_path, dst_bucket, dst_base_path):
+def upload_file(key, clip_path, config_path, ul_path):
     """
 
     """
@@ -207,8 +267,8 @@ def upload_file(key, clip_path, config_path, dst_bucket, dst_base_path):
 
     base_key = key.rstrip(file_name)
 
-    dst_str = f's3_ul:{dst_bucket}/{dst_base_path}{base_key}'
-    cmd_str = f'rclone copy {str(clip_file_path)} {dst_str} --config={config_path}'
+    dst_str = f'ul:{ul_path}/{base_key}'
+    cmd_str = f'rclone copy {clip_file_path} {dst_str} --config={config_path} --no-check-dest'
     cmd_list = shlex.split(cmd_str)
     p = subprocess.run(cmd_list, capture_output=True, text=True, check=False)
     clip_file_path.unlink()
@@ -218,7 +278,7 @@ def upload_file(key, clip_path, config_path, dst_bucket, dst_base_path):
         return True
 
 
-def marshall(key, dl_path, clip_path, min_lon, max_lon, min_lat, max_lat, config_path, dst_bucket, dst_base_path):
+def marshall(key, dl_path, clip_path, min_lon, max_lon, min_lat, max_lat, config_path, ul_path):
     """
 
     """
@@ -226,8 +286,8 @@ def marshall(key, dl_path, clip_path, min_lon, max_lon, min_lat, max_lat, config
     if not isinstance(msg, str):
         msg = clip_file(key, dl_path, clip_path, min_lon, max_lon, min_lat, max_lat)
 
-        if not isinstance(msg, str) and dst_bucket:
-            msg = upload_file(key, clip_path, config_path, dst_bucket, dst_base_path)
+        if not isinstance(msg, str):
+            msg = upload_file(key, clip_path, config_path, ul_path)
 
     return msg
 
@@ -241,71 +301,38 @@ if __name__ == '__main__':
 
     print(f'-- dates to be downloaded are from {start_date} to {end_date}')
 
-    s3 = boto3.client('s3', 'us-west-2', config=Config(max_pool_connections=source['n_tasks'], retries={'mode': 'adaptive', 'max_attempts': 3}, read_timeout=120, signature_version=UNSIGNED))
+    # s3 = boto3.client('s3', 'us-west-2', config=Config(max_pool_connections=source['n_tasks'], retries={'mode': 'adaptive', 'max_attempts': 3}, read_timeout=120, signature_version=UNSIGNED))
 
-    src_session = s3func.S3Session('', '', src_bucket)
-    src_session.client = s3
+    # src_session = s3func.S3Session('', '', src_bucket)
+    # src_session.client = s3
 
-    config_path = create_rclone_config('s3_dl', data_path)
+    config_path = create_rclone_config('dl', data_path, source)
+
+    ul_path = pathlib.Path(remote.pop('path'))
+    _ = create_rclone_config('ul', data_path, remote)
+
+    dst_str = f'ul:{ul_path}'
 
     print('-- Determine the files that need to be downloaded.')
 
-    try:
-        if 'endpoint_url' in remote:
-            endpoint_url = remote['endpoint_url']
-        else:
-            endpoint_url = None
+    src_files = query_source(config_path, start_date, end_date)
+    stdin = '\n'.join(src_files)
+    src_str = f'dl:{src_path}/'
+    cmd_str = f'rclone check {src_str} {dst_str} --missing-on-dst - --files-from-raw - --config={config_path} --fast-list'
+    cmd_list = shlex.split(cmd_str)
+    p = subprocess.run(cmd_list, input=stdin, capture_output=True, text=True, check=False)
 
-        dst_session = s3func.S3Session(remote['access_key_id'], remote['access_key'], remote['bucket'], endpoint_url, stream=False)
-        dst_bucket = remote['bucket']
-        dst_base_path = remote['path']
-    
-        dst_obj_resp = dst_session.list_objects(remote['path'])
-        dst_files = set(obj['key'].split('/')[-1] for obj in dst_obj_resp.iter_objects() if obj['key'].endswith('.nc'))
-
-        _ = create_rclone_config('s3_ul', data_path, remote['access_key_id'], remote['access_key'], endpoint_url)
-
-    except:
-        dst_files = set()
-        for file_path in clip_path.rglob('*'):
-            if file_path.is_file():
-                if file_path.name.endswith('.nc'):
-                    dst_files.add(file_path.name)
-
-        dst_bucket = False
-        dst_base_path = False
-
-    src_files = set()
-    src_size = 0
-    for path, names in ncar_era5_names.items():
-        names_set = set(names.values())
-        src_obj_resp = src_session.list_objects(path)
-        for obj in src_obj_resp.iter_objects():
-            key = obj['key']
-            key_name = key.split('/')[-1]
-            for name in names_set:
-                if name in key:
-                    if key_name not in dst_files:
-                        dates_str = key_name.split('.')[-2].split('_')
-                        file_start_date = pendulum.from_format(dates_str[0], 'YYYYMMDDHH').date()
-                        file_end_date = pendulum.from_format(dates_str[1], 'YYYYMMDDHH').date()
-                        if (file_end_date >= start_date) and (file_start_date <= end_date):
-                            src_files.add(key)
-                            src_size += obj['content_length'] * 0.000001
-                    break
-
-            # if src_files:
-            #     break
-
-    src_files_new = list(src_files)
+    # print(p.stdout)
+    # print(p.stderr)
+    src_files_new = [key for key in p.stdout.strip('\n').split('\n')]
     src_files_new.sort(key=lambda key: key[-24:-3], reverse=True)
 
-    print(f'-- {int(src_size):,} MBs and {len(src_files_new)} files will be downloaded...')
+    print(f'-- {len(src_files_new)} files will be downloaded...')
 
-    with concurrent.futures.ProcessPoolExecutor(max_workers=source['n_tasks'], mp_context=mp.get_context("spawn")) as executor:
+    with concurrent.futures.ProcessPoolExecutor(max_workers=params['n_tasks'], mp_context=mp.get_context("spawn")) as executor:
         futures = {}
         for key in src_files_new:
-            f1 = executor.submit(marshall, key, dl_path, clip_path, min_lon, max_lon, min_lat, max_lat, config_path, dst_bucket, dst_base_path)
+            f1 = executor.submit(marshall, key, dl_path, clip_path, min_lon, max_lon, min_lat, max_lat, config_path, ul_path)
             futures[f1] = key
 
         counter = 0

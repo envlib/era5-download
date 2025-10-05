@@ -165,7 +165,7 @@ def create_rclone_config(name, config_path, config_dict):
     config_list = [f'{k}={v}' for k, v in config_dict.items() if k != 'type']
     config_str = ' '.join(config_list)
     config_path = config_path.joinpath('rclone.config')
-    cmd_str = f'rclone config create {name} {type_} {config_str} --config={config_path} --non-interactive --obscure'
+    cmd_str = f'rclone config create {name} {type_} {config_str} --config={config_path} --non-interactive'
     cmd_list = shlex.split(cmd_str)
     p = subprocess.run(cmd_list, capture_output=True, text=True, check=True)
 

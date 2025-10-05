@@ -1,2 +1,2 @@
-s3func==0.7.2
 pendulum==3.1.0
+sentry_sdk==2.39.0

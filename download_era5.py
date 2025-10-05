@@ -8,18 +8,12 @@ Created on Mon Apr 28 15:49:37 2025
 import os
 import tomllib
 import pathlib
-import s3func
-import boto3
-import botocore
-from botocore import UNSIGNED
-from botocore.config import Config
-import shutil
 import concurrent.futures
 import multiprocessing as mp
-import urllib3
 import subprocess
 import shlex
 import pendulum
+import sentry_sdk
 # from rclone_python import rclone
 
 ######################################################
@@ -30,9 +24,25 @@ base_path = pathlib.Path(os.path.realpath(os.path.dirname(__file__)))
 with open(base_path.joinpath("parameters.toml"), "rb") as f:
     params = tomllib.load(f)
 
+
+## Sentry
+sentry = params['sentry']
+
+if sentry['dsn'] != '':
+    sentry_sdk.init(
+        dsn=sentry['dsn'],
+        # Add data like request headers and IP for users,
+        # see https://docs.sentry.io/platforms/python/data-management/data-collected/ for more info
+        send_default_pii=True,
+    )
+
+if sentry['tags']:
+    sentry_sdk.set_tags(sentry['tags'])
+
+
+## Inputs
 source = params['source']
 src_path = pathlib.Path(source.pop('path'))
-remote = params['remote']
 
 data_path = pathlib.Path('/data')
 # data_path = pathlib.Path('/home/mike/data/ncar/tests')
@@ -114,6 +124,7 @@ ncar_era5_names = {
 
 clip_str_format = 'ncks -O -4 -L 3 -d latitude,{min_lat:.1f},{max_lat:.1f} -d longitude,{min_lon:.1f},{max_lon:.1f} {dl_file_path} {clip_file_path}'
 
+remote = params['remote']
 
 # aws_config = {
 #     'type': 's3',

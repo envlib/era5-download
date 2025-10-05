@@ -1,9 +1,4 @@
-FROM python:3.11-slim
-
-RUN apt-get update && apt-get install -y curl unzip nco ncl-ncarg wget nano bash && apt-get clean && rm -rf /var/lib/apt/lists/*
-ENV PYTHONUNBUFFERED=True
-
-RUN curl https://rclone.org/install.sh | bash
+FROM mullenkamp/wrf-base-debian:1.0
 
 COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt

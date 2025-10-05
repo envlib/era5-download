@@ -9,7 +9,7 @@ services:
     user: 55037:5006
     volumes:
         - "~/git/wrf-repos/era5-download/parameters.toml:/parameters.toml"
-        # - '~/WineClimate/wrf_1k/era5:/data/output'
+        - '~/WineClimate/wrf_1k/era5:/data/output'
         # - '~/data/ncar/tests/clipped:/data/clipped'
         # - '~/data/ncar/tests/download:/data/download'
 

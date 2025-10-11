@@ -82,7 +82,7 @@ if end_date < start_date:
     raise ValueError('start_date is after the end_date.')
 
 ncar_era5_pl_names = {
-    # 'GEOPT': '128_129_z',
+    'GEOPT': '128_129_z',
     'SPECHUMD': '128_133_q',
     'TT': '128_130_t',
     'UU': '128_131_u',

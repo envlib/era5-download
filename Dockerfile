@@ -1,7 +1,7 @@
 FROM mullenkamp/wrf-base-debian:1.0
 
 COPY requirements.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
+RUN uv pip install --no-cache-dir -r requirements.txt
 
 RUN groupadd --gid 1000 appgroup && \
     useradd --uid 1000 --gid appgroup --shell /bin/bash --no-create-home appuser

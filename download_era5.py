@@ -49,6 +49,7 @@ data_path = pathlib.Path('/data')
 
 if 'download_path' in params:
     dl_path = pathlib.Path(params['download_path'])
+    data_path = dl_path.parent
 else:
     dl_path = pathlib.Path('/data/download')
 
@@ -141,37 +142,6 @@ def create_rclone_config(name, config_path, config_dict):
     """
 
     """
-    # config_dict = {}
-    # if isinstance(access_key_id, str):
-    #     if isinstance(endpoint_url, str):
-    #         if isinstance(download_url, str) or 'backblazeb2' in endpoint_url:
-    #             type_ = 'b2'
-    #             config_dict['account'] = access_key_id
-    #             config_dict['key'] = access_key
-    #             config_dict['hard_delete'] = 'true'
-    #             if isinstance(download_url, str):
-    #                 config_dict['download_url'] = download_url
-    #         else:
-    #             type_ = 's3'
-    #             if 'mega' in endpoint_url:
-    #                 provider = 'Mega'
-    #             else:
-    #                 provider = 'Other'
-    #             config_dict['provider'] = provider
-    #             config_dict['access_key_id'] = access_key_id
-    #             config_dict['secret_access_key'] = access_key
-    #             config_dict['endpoint'] = endpoint_url
-    #     else:
-    #         type_ = 's3'
-    #         config_dict['provider'] = 'AWS'
-    #         config_dict['access_key_id'] = access_key_id
-    #         config_dict['secret_access_key'] = access_key
-    # else:
-    #     type_ = 's3'
-    #     config_dict['provider'] = 'AWS'
-    #     config_dict['env_auth'] = 'false'
-    #     config_dict['region'] = 'us-west-2'
-
     type_ = config_dict['type']
     config_list = [f'{k}={v}' for k, v in config_dict.items() if k != 'type']
     config_str = ' '.join(config_list)
@@ -351,7 +321,8 @@ if __name__ == '__main__':
     with concurrent.futures.ProcessPoolExecutor(max_workers=params['n_tasks'], mp_context=mp.get_context("spawn")) as executor:
         futures = {}
         for key in src_files_new:
-            f1 = executor.submit(marshall, key, dl_path, clip_path, min_lon, max_lon, min_lat, max_lat, config_path, ul_path)
+            # f1 = executor.submit(marshall, key, dl_path, clip_path, min_lon, max_lon, min_lat, max_lat, config_path, ul_path)
+            f1 = executor.submit(download_file, key, dl_path, config_path)
             futures[f1] = key
 
         counter = 0

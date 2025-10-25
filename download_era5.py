@@ -26,18 +26,19 @@ with open(base_path.joinpath("parameters.toml"), "rb") as f:
 
 
 ## Sentry
-sentry = params['sentry']
+if 'sentry' in params:
+    sentry = params['sentry']
 
-if sentry['dsn'] != '':
-    sentry_sdk.init(
-        dsn=sentry['dsn'],
-        # Add data like request headers and IP for users,
-        # see https://docs.sentry.io/platforms/python/data-management/data-collected/ for more info
-        send_default_pii=True,
-    )
+    if sentry['dsn'] != '':
+        sentry_sdk.init(
+            dsn=sentry['dsn'],
+            # Add data like request headers and IP for users,
+            # see https://docs.sentry.io/platforms/python/data-management/data-collected/ for more info
+            send_default_pii=True,
+        )
 
-if sentry['tags']:
-    sentry_sdk.set_tags(sentry['tags'])
+    if sentry['tags']:
+        sentry_sdk.set_tags(sentry['tags'])
 
 
 ## Inputs
@@ -206,7 +207,9 @@ def query_source(config_path, start_date, end_date):
 
         t2 = pendulum.now()
 
-        print(round((t2 - t1).total_seconds()))
+        secs = round((t2 - t1).total_seconds())
+
+        print(f'The product query took {secs} secs.')
 
     return src_files
 

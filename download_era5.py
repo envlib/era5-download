@@ -324,8 +324,8 @@ if __name__ == '__main__':
     with concurrent.futures.ProcessPoolExecutor(max_workers=params['n_tasks'], mp_context=mp.get_context("spawn")) as executor:
         futures = {}
         for key in src_files_new:
-            # f1 = executor.submit(marshall, key, dl_path, clip_path, min_lon, max_lon, min_lat, max_lat, config_path, ul_path)
-            f1 = executor.submit(download_file, key, dl_path, config_path)
+            f1 = executor.submit(marshall, key, dl_path, clip_path, min_lon, max_lon, min_lat, max_lat, config_path, ul_path)
+            # f1 = executor.submit(download_file, key, dl_path, config_path)
             futures[f1] = key
 
         counter = 0
@@ -338,6 +338,7 @@ if __name__ == '__main__':
             else:
                 if counter % 100 == 0 or counter == 1:
                     print(f'{counter}')
+                    print(key)
 
 
 

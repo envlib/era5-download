@@ -46,7 +46,7 @@ source = params['source']
 src_path = pathlib.Path(source.pop('path'))
 
 data_path = pathlib.Path('/data')
-# data_path = pathlib.Path('/home/mike/data/ncar/tests')
+# data_path = pathlib.Path('/home/mike/data/ncar/era5')
 
 if 'download_path' in params:
     dl_path = pathlib.Path(params['download_path'])
@@ -67,6 +67,11 @@ min_lon = bounds['min_lon']
 max_lon = bounds['max_lon']
 min_lat = bounds['min_lat']
 max_lat = bounds['max_lat']
+
+if 'check_target' in params:
+    check_target = params['check_target']
+else:
+    check_target = True
 
 dates = params['dates']
 
@@ -128,12 +133,6 @@ clip_str_format = 'ncks -O -4 -L 3 -d latitude,{min_lat:.1f},{max_lat:.1f} -d lo
 
 remote = params['remote']
 
-# aws_config = {
-#     'type': 's3',
-#     'provider': 'AWS',
-#     'env_auth': 'false',
-#     'region': 'us-west-2',
-#     }
 
 ######################################################
 ### functions
@@ -288,15 +287,9 @@ def marshall(key, dl_path, clip_path, min_lon, max_lon, min_lat, max_lat, config
 ### Get data
 
 
-
 if __name__ == '__main__':
 
     print(f'-- dates to be downloaded are from {start_date} to {end_date}')
-
-    # s3 = boto3.client('s3', 'us-west-2', config=Config(max_pool_connections=source['n_tasks'], retries={'mode': 'adaptive', 'max_attempts': 3}, read_timeout=120, signature_version=UNSIGNED))
-
-    # src_session = s3func.S3Session('', '', src_bucket)
-    # src_session.client = s3
 
     config_path = create_rclone_config('dl', data_path, source)
 
@@ -308,15 +301,21 @@ if __name__ == '__main__':
     print('-- Determine the files that need to be downloaded.')
 
     src_files = query_source(config_path, start_date, end_date)
-    stdin = '\n'.join(src_files)
-    src_str = f'dl:{src_path}/'
-    cmd_str = f'rclone check {src_str} {dst_str} --missing-on-dst - --files-from-raw - --config={config_path} --fast-list'
-    cmd_list = shlex.split(cmd_str)
-    p = subprocess.run(cmd_list, input=stdin, capture_output=True, text=True, check=False)
+    if check_target:
+        print('-- Checking files in target.')
 
-    # print(p.stdout)
-    # print(p.stderr)
-    src_files_new = [key for key in p.stdout.strip('\n').split('\n')]
+        stdin = '\n'.join(src_files)
+        src_str = f'dl:{src_path}/'
+        cmd_str = f'rclone check {src_str} {dst_str} --missing-on-dst - --files-from-raw - --config={config_path} --fast-list'
+        cmd_list = shlex.split(cmd_str)
+        p = subprocess.run(cmd_list, input=stdin, capture_output=True, text=True, check=False)
+    
+        # print(p.stdout)
+        # print(p.stderr)
+        src_files_new = [key for key in p.stdout.strip('\n').split('\n')]
+    else:
+        src_files_new = list(src_files)
+
     src_files_new.sort(key=lambda key: key[-24:-3], reverse=True)
 
     print(f'-- {len(src_files_new)} files will be downloaded...')

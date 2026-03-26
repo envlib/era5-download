@@ -2,6 +2,11 @@ n_tasks = 8
 
 check_target = true
 
+# preset = "wrf"  # Variable preset. Available: "wrf", "all"
+# variables = "sp,var_2t,cape"  # Additional variables by NetCDF name (case insensitive). Combined with preset if both set.
+
+# work_dir = "/tmp/era5_dl"  # Optional: working directory for intermediate files. Uses a temp dir if not set.
+
 [dates]
 start_date = "1940-01-01"
 end_date = "1940-01-01"
@@ -24,7 +29,7 @@ env_auth = 'false'
 region = 'us-west-2'
 path = 'nsf-ncar-era5/'
 
-[remote] # Two examples: s3 config and local path config; local path must be '/data/output', then mount a volume in docker-compose.yml
+# [remote] # Two examples: s3 config and local path config; local path must be '/data/output', then mount a volume in docker-compose.yml
 # type = 's3'
 # provider = 'Mega'
 # endpoint = 'https://s3.ca-west-1.s4.mega.io'
@@ -34,7 +39,3 @@ path = 'nsf-ncar-era5/'
 
 # type = 'local'
 # path = '/data/output'
-
-[sentry]
-dsn = ''
-tags = {}

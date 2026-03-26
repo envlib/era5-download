@@ -1,103 +1,59 @@
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
-
 [project]
-name = "era5-download"
-# dynamic = ["version"]
-version = '0.1.0'
-description = 'A simple utility for download and subsetting ERA5 data'
-readme = "README.md"
-requires-python = ">=3.11"
-license = "Apache-2.0"
-keywords = ['WRF', 'WPS', 'ERA5']
+name = "era5-s3-dl"
 authors = [
   { name = "Mike Kittridge", email = "mullenkamp1@gmail.com" },
 ]
+description = "A utility for downloading and subsetting ERA5 data from NCAR S3"
+readme = "README.md"
+dynamic = ["version"]
 classifiers = [
-  "Development Status :: 4 - Beta",
-  "Programming Language :: Python",
-  "Programming Language :: Python :: 3.11",
-  "Programming Language :: Python :: Implementation :: CPython",
-  "Programming Language :: Python :: Implementation :: PyPy",
+    "Development Status :: 4 - Beta",
+    "Programming Language :: Python :: 3 :: Only",
 ]
+requires-python = ">=3.10"
+license = "Apache-2.0"
+keywords = ["WRF", "WPS", "ERA5"]
 dependencies = [
-  'pendulum==3.1.0',
-  'sentry_sdk==2.39.0',
-  ]
+  "pendulum>=3.1",
+  "typer>=0.12",
+  "rclone-bin>=1.73",
+]
 
-# [project.scripts]
-# era5_to_int = "era5_to_int.era5_to_int:app"
+[project.optional-dependencies]
+sentry = ["sentry_sdk>=2.39"]
+
+[project.scripts]
+era5_dl = "era5_dl.era5_dl:app"
 
 [project.urls]
-Documentation = "https://github.com/envlib/era5_to_int"
-Issues = "https://github.com/envlib/era5_to_int/issues"
-Source = "https://github.com/envlib/era5_to_int"
+Source = "https://github.com/envlib/era5-download"
+Issues = "https://github.com/envlib/era5-download/issues"
 
-[tool.hatch.build.targets.sdist]
-include = [
-    "/era5_to_int",
-]
-# exclude = [
-#     "/era5_to_int/tests/*",
-# ]
-
-[tool.hatch.version]
-path = "era5_to_int/__init__.py"
-
-[tool.hatch.envs.default]
-python = "3.11"
-dependencies = [
-  "coverage[toml]>=6.5",
+[dependency-groups]
+dev = [
   "pytest",
-  'spyder-kernels==2.5.2'
-]
-[tool.hatch.envs.default.scripts]
-test = "pytest {args:tests}"
-test-cov = "coverage run -m pytest {args:tests}"
-cov-report = [
-  "- coverage combine",
-  "coverage report",
-]
-cov = [
-  "test-cov",
-  "cov-report",
+  "spyder-kernels==2.5.2",
+  "black",
+  "mypy",
+  "ruff",
 ]
 
-[[tool.hatch.envs.all.matrix]]
-python = ["3.7", "3.8", "3.9", "3.10", "3.11"]
+[tool.pytest.ini_options]
+testpaths = ["era5_dl/tests"]
 
-[tool.hatch.envs.lint]
-detached = true
-dependencies = [
-  "black>=23.1.0",
-  "mypy>=1.0.0",
-  "ruff>=0.0.243",
-]
-[tool.hatch.envs.lint.scripts]
-typing = "mypy --install-types --non-interactive {args:src/wrf_testing tests}"
-style = [
-  "ruff {args:.}",
-  "black --check --diff {args:.}",
-]
-fmt = [
-  "black {args:.}",
-  "ruff --fix {args:.}",
-  "style",
-]
-all = [
-  "style",
-  "typing",
-]
+[tool.hatch.metadata]
+allow-direct-references = true
 
 [tool.black]
-target-version = ["py37"]
+target-version = ["py311"]
 line-length = 120
 skip-string-normalization = true
 
 [tool.ruff]
-target-version = "py37"
+target-version = "py311"
 line-length = 120
+
+[tool.ruff.lint]
 select = [
   "A",
   "ARG",
@@ -140,23 +96,24 @@ unfixable = [
   "F401",
 ]
 
-[tool.ruff.isort]
-known-first-party = ["wrf_testing"]
+[tool.ruff.lint.isort]
+known-first-party = ["era5_dl"]
 
-[tool.ruff.flake8-tidy-imports]
+[tool.ruff.lint.flake8-tidy-imports]
 ban-relative-imports = "all"
 
-[tool.ruff.per-file-ignores]
+[tool.ruff.lint.per-file-ignores]
 # Tests can use magic values, assertions, and relative imports
 "tests/**/*" = ["PLR2004", "S101", "TID252"]
 
 [tool.coverage.run]
-source_pkgs = ["wrf_testing", "tests"]
+source_pkgs = ["era5_dl", "tests"]
 branch = true
 parallel = true
-omit = [
-  "src/wrf_testing/__about__.py",
-]
+
+[tool.coverage.paths]
+era5_dl = ["era5_dl"]
+tests = ["era5_dl/tests"]
 
 [tool.coverage.report]
 exclude_lines = [
@@ -165,8 +122,20 @@ exclude_lines = [
   "if TYPE_CHECKING:",
 ]
 
-# [project.optional-dependencies]
-# dev = ['pytest', 'spyder-kernels==2.3.2']
+[build-system]
+requires = ["hatchling>=1.26.1"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "/era5_dl",
+]
+exclude = [
+    "/era5_dl/tests/*",
+]
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/foo"]
+packages = ["era5_dl"]
+
+[tool.hatch.version]
+path = "era5_dl/__init__.py"

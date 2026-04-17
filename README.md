@@ -12,12 +12,12 @@ For each file, the tool: downloads from the NCAR source via rclone, clips to lat
 ## Installation
 
 ```bash
-pip install era5_s3_dl
+pipx install era5_s3_dl
 ```
 
 With optional Sentry error tracking (used in Docker deployment):
 ```bash
-pip install era5_s3_dl[sentry]
+pipx install era5_s3_dl[sentry]
 ```
 
 ## Configuration

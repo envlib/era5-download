@@ -20,6 +20,22 @@ With optional Sentry error tracking (used in Docker deployment):
 pipx install era5_s3_dl[sentry]
 ```
 
+## Docker
+
+The Docker image includes ncks and installs the tool with the Sentry extra. Modify `parameters.toml` and `docker-compose.yml`, then run:
+
+```bash
+docker-compose up -d
+docker-compose logs -f
+```
+
+The `docker-compose.yml` mounts your `parameters.toml` into the container and maps an output volume:
+```yaml
+volumes:
+    - "./parameters.toml:/parameters.toml"
+    - "./output:/data/output"
+```
+
 ## Configuration
 
 Copy `parameters_example.toml` to `parameters.toml` and edit it. The TOML file is the primary configuration mechanism -- all settings live here, and select values can be overridden via CLI options.
@@ -153,18 +169,4 @@ All options are optional and override the corresponding value in the parameters 
 | `--variables` | `-v` | text | `variables` |
 | `--list-only` | `-l` | flag | Query and list files only, skip download |
 
-## Docker
 
-The Docker image includes ncks and installs the tool with the Sentry extra. Modify `parameters.toml` and `docker-compose.yml`, then run:
-
-```bash
-docker-compose up -d
-docker-compose logs -f
-```
-
-The `docker-compose.yml` mounts your `parameters.toml` into the container and maps an output volume:
-```yaml
-volumes:
-    - "./parameters.toml:/parameters.toml"
-    - "./output:/data/output"
-```

@@ -67,21 +67,26 @@ WRF_NAME_MAP = {
 clip_str_format = 'ncks -O -4 -L 3 -d latitude,{min_lat:.1f},{max_lat:.1f} -d longitude,{min_lon:.1f},{max_lon:.1f} {dl_file_path} {clip_file_path}'
 
 
-def resolve_variables(preset_name, variables_str):
+def resolve_variables(preset_name, variables_str, skip_vars_str=None):
     """
     Resolve preset and/or variable names into a dict of {product: {file_code: metadata}}.
+
+    skip_vars_str, if given, is a comma-separated list of NetCDF variable names
+    to exclude. It is applied after preset/variables are resolved and composes
+    cleanly with both.
     """
     selected = {}  # {product: set of file_codes}
 
     if preset_name:
         name = preset_name.lower()
         if name == 'all':
-            return ALL_VARIABLES
-        if name not in PRESETS:
+            selected = {product: set(vars_.keys()) for product, vars_ in ALL_VARIABLES.items()}
+        elif name not in PRESETS:
             print(f'Error: Unknown preset "{preset_name}". Available: {", ".join(PRESETS.keys())}, all', file=sys.stderr)
             raise typer.Exit(code=1)
-        for product, codes in PRESETS[name].items():
-            selected.setdefault(product, set()).update(codes)
+        else:
+            for product, codes in PRESETS[name].items():
+                selected.setdefault(product, set()).update(codes)
 
     if variables_str:
         for var_name in variables_str.split(','):
@@ -94,6 +99,21 @@ def resolve_variables(preset_name, variables_str):
                 raise typer.Exit(code=1)
             product, file_code = NC_VAR_LOOKUP[key]
             selected.setdefault(product, set()).update([file_code])
+
+    if skip_vars_str:
+        for var_name in skip_vars_str.split(','):
+            var_name = var_name.strip()
+            if not var_name:
+                continue
+            key = var_name.upper()
+            if key not in NC_VAR_LOOKUP:
+                print(f'Error: Unknown --skip-vars variable "{var_name}". Use NetCDF variable names (case insensitive).', file=sys.stderr)
+                raise typer.Exit(code=1)
+            product, file_code = NC_VAR_LOOKUP[key]
+            if product in selected:
+                selected[product].discard(file_code)
+                if not selected[product]:
+                    del selected[product]
 
     if not selected:
         print('Error: No variables selected. Use --preset (e.g. "wrf") and/or --variables (e.g. "sp,var_2t").', file=sys.stderr)
@@ -353,6 +373,10 @@ def main(
         '--variables', '-v',
         help='Comma-separated NetCDF variable names to download (case insensitive, e.g. "sp,var_2t,z").',
     )] = None,
+    skip_vars: Annotated[Optional[str], typer.Option(
+        '--skip-vars',
+        help='Comma-separated NetCDF variable names to exclude from download (case insensitive). Composes with --preset and --variables.',
+    )] = None,
     list_only: Annotated[bool, typer.Option(
         '--list-only', '-l',
         help='Only query and list available source files, then exit. Does not require a [remote] config.',
@@ -392,9 +416,11 @@ def main(
         params['preset'] = preset
     if variables is not None:
         params['variables'] = variables
+    if skip_vars is not None:
+        params['skip_vars'] = skip_vars
 
     # Resolve variables
-    era5_vars = resolve_variables(params.get('preset'), params.get('variables'))
+    era5_vars = resolve_variables(params.get('preset'), params.get('variables'), params.get('skip_vars'))
 
     # Sentry setup
     if 'sentry' in params:

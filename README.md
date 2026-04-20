@@ -50,6 +50,7 @@ Copy `parameters_example.toml` to `parameters.toml` and edit it. The TOML file i
 | `work_dir` | string | (temp dir) | Working directory for intermediate files. Creates `download/` and `clipped/` subdirs within it. If not set, uses a temporary directory that is cleaned up on completion. |
 | `preset` | string | | Variable preset (e.g. `"wrf"`, `"all"`). Required unless `variables` is set. |
 | `variables` | string | | Comma-separated NetCDF variable names to download (case insensitive). Combined with `preset` if both set. |
+| `skip_vars` | string | | Comma-separated NetCDF variable names to exclude (case insensitive). Applied after `preset` + `variables`. |
 
 **`[dates]`** -- Date range for files to download:
 ```toml
@@ -113,6 +114,8 @@ You must specify which ERA5 variables to download using `--preset` and/or `--var
 
 When both `--preset` and `--variables` are given, the variables are combined (union).
 
+**Skip-vars** (`--skip-vars`) removes variables after `--preset` and `--variables` are resolved. Useful when you want a preset minus a few fields — e.g. WRF inputs but with SST and sea ice coming from a different dataset.
+
 ```bash
 # Download WRF variables only
 era5_dl parameters.toml --preset wrf
@@ -122,6 +125,9 @@ era5_dl parameters.toml --variables sp,var_2t
 
 # Download WRF variables plus CAPE
 era5_dl parameters.toml --preset wrf --variables cape
+
+# Download WRF variables but skip SST and sea ice (sourcing them elsewhere)
+era5_dl parameters.toml --preset wrf --skip-vars sstk,ci
 
 # List all available files without downloading
 era5_dl parameters.toml --preset all --list-only
@@ -167,6 +173,7 @@ All options are optional and override the corresponding value in the parameters 
 | `--max-lat` | | float | `bounds.max_lat` |
 | `--preset` | `-p` | text | `preset` |
 | `--variables` | `-v` | text | `variables` |
+| `--skip-vars` | | text | `skip_vars` |
 | `--list-only` | `-l` | flag | Query and list files only, skip download |
 
 

@@ -242,12 +242,13 @@ wheels = [
 ]
 
 [[package]]
-name = "era5-download"
+name = "era5-s3-dl"
 source = { editable = "." }
 dependencies = [
     { name = "pendulum" },
     { name = "rclone-bin" },
     { name = "typer" },
+    { name = "typing-extensions" },
 ]
 
 [package.optional-dependencies]
@@ -270,6 +271,7 @@ requires-dist = [
     { name = "rclone-bin", specifier = ">=1.73" },
     { name = "sentry-sdk", marker = "extra == 'sentry'", specifier = ">=2.39" },
     { name = "typer", specifier = ">=0.12" },
+    { name = "typing-extensions" },
 ]
 provides-extras = ["sentry"]
 

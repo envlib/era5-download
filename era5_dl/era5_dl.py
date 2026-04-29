@@ -8,6 +8,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 import tomllib
 from pathlib import Path
 from typing import Optional
@@ -214,7 +215,7 @@ def query_source(config_path, start_date, end_date, src_path, era5_vars):
     months = date_range_months(start_date, end_date)
     print(f'-- Querying {len(months)} monthly directories across products...')
 
-    t1 = pendulum.now()
+    t1 = time.monotonic()
 
     src_files = set()
     futures = {}
@@ -236,8 +237,8 @@ def query_source(config_path, start_date, end_date, src_path, era5_vars):
             result = future.result()
             src_files.update(result)
 
-    t2 = pendulum.now()
-    secs = round((t2 - t1).total_seconds())
+    t2 = time.monotonic()
+    secs = round(t2 - t1)
     print(f'-- Source query took {secs} secs, found {len(src_files)} files.')
 
     return src_files

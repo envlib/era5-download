@@ -177,3 +177,20 @@ All options are optional and override the corresponding value in the parameters 
 | `--list-only` | `-l` | flag | Query and list files only, skip download |
 
 
+
+## Exit status and messages
+
+Since 0.2.2, `era5_dl` exits **1** if any file failed at any step, or if listing a source directory failed, so a
+caller can trust exit 0 to mean every selected file reached the target. Each step (download, clip, upload) is judged by
+its tool's return code, not by whether the tool wrote to stderr: rclone writes to stderr on success too, for example
+`ERROR : Attempt 1/3 failed` before a retry succeeds. Before 0.2.2 such a recovered transfer counted as a failure, the
+good file was deleted, and the run still exited 0.
+
+- `NOTICE <step> <key>: <message>` (stdout): the step succeeded but its tool wrote to stderr. The file is kept.
+- `FAILED <step> <key> rc=<code>: <message>` (stderr): the file did not reach the target.
+- `-- <n> of <m> files FAILED` (stderr), then exit 1.
+
+`--check-target` (the default) lists the target with `rclone lsf` and downloads every selected file it does not hold.
+A target that cannot be listed is an error (exit 1). Before 0.2.2 this used `rclone check --missing-on-dst`, which
+exits 1 for an error as for a difference, and its empty output on an error was read as the key `''`, a copy of the
+whole source root.

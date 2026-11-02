@@ -185,6 +185,9 @@ def _list_month(product, month, names_str, config_path, src_path, start_date, en
     cmd_str = f'rclone lsf dl:{src_path}/{base_path} --config={config_path} --files-only --include {names_str} --fast-list'
     cmd_list = shlex.split(cmd_str)
     p = subprocess.run(cmd_list, capture_output=True, text=True, check=False)
+    if p.returncode != 0:
+        # A failed listing would otherwise drop the whole product-month silently.
+        raise RuntimeError(f'listing {base_path} failed (rclone exit {p.returncode}): {p.stderr.strip()}')
     return parse_stdout_files(p.stdout, start_date, end_date, base_path)
 
 
@@ -197,6 +200,8 @@ def _list_invariant(names_str, config_path, src_path):
     cmd_str = f'rclone lsf dl:{src_path}/{base_path} -R --config={config_path} --files-only --include {names_str} --fast-list'
     cmd_list = shlex.split(cmd_str)
     p = subprocess.run(cmd_list, capture_output=True, text=True, check=False)
+    if p.returncode != 0:
+        raise RuntimeError(f'listing {base_path} failed (rclone exit {p.returncode}): {p.stderr.strip()}')
     src_files = set()
     for key_name in p.stdout.strip('\n').split('\n'):
         if key_name:
@@ -247,24 +252,29 @@ def query_source(config_path, start_date, end_date, src_path, era5_vars):
 def download_file(key, dl_path, config_path, src_path):
     """
     Download a single file from the source via rclone.
+
+    Returns (step, returncode, stderr). Success is judged by rclone's return code: rclone writes to stderr on
+    success too (e.g. "Attempt 1/3 failed" before a retry succeeds), so stderr on a zero exit is only a notice.
     """
     src_str = f'dl:{src_path}/{key}'
     cmd_str = f'rclone copy {src_str} {dl_path} --config={config_path}'
     cmd_list = shlex.split(cmd_str)
     p = subprocess.run(cmd_list, capture_output=True, text=True, check=False)
-    if p.stderr != '':
-        file_name = key.split('/')[-1]
-        dl_file_path = dl_path.joinpath(file_name)
+    dl_file_path = dl_path.joinpath(key.split('/')[-1])
+    if p.returncode != 0:
         if dl_file_path.exists():
             dl_file_path.unlink()
-        return p.stderr
-    else:
-        return True
+        return 'download', p.returncode, p.stderr
+    if not dl_file_path.exists():  # -1: rclone exited 0 without writing the file
+        return 'download', -1, (p.stderr + '\nrclone exited 0 but the file is absent').strip()
+    return 'download', 0, p.stderr
 
 
 def clip_file(key, dl_path, clip_path, min_lon, max_lon, min_lat, max_lat):
     """
     Clip a downloaded NetCDF file to the specified geographic bounds using ncks.
+
+    Returns (step, returncode, stderr); success is ncks' return code, not an empty stderr.
     """
     file_name = key.split('/')[-1]
 
@@ -274,15 +284,16 @@ def clip_file(key, dl_path, clip_path, min_lon, max_lon, min_lat, max_lat):
     cmd_list = shlex.split(cmd_str)
     p = subprocess.run(cmd_list, capture_output=True, text=True, check=False)
     dl_file_path.unlink()
-    if p.stderr != '':
-        return p.stderr
-    else:
-        return True
+    if p.returncode != 0 and clip_file_path.exists():
+        clip_file_path.unlink()
+    return 'clip', p.returncode, p.stderr
 
 
 def upload_file(key, clip_path, config_path, ul_path):
     """
     Upload a clipped file to the remote destination via rclone.
+
+    Returns (step, returncode, stderr); success is rclone's return code, not an empty stderr.
     """
     file_name = key.split('/')[-1]
     clip_file_path = clip_path.joinpath(file_name)
@@ -294,24 +305,35 @@ def upload_file(key, clip_path, config_path, ul_path):
     cmd_list = shlex.split(cmd_str)
     p = subprocess.run(cmd_list, capture_output=True, text=True, check=False)
     clip_file_path.unlink()
-    if p.stderr != '':
-        return p.stderr
-    else:
-        return True
+    return 'upload', p.returncode, p.stderr
 
 
 def marshall(key, dl_path, clip_path, min_lon, max_lon, min_lat, max_lat, config_path, ul_path, src_path):
     """
     Orchestrate the download → clip → upload pipeline for a single file.
+
+    Returns (failure, notices): failure is the failing step's (step, returncode, stderr) or None; notices lists the
+    (step, stderr) of every step that succeeded but wrote to stderr.
     """
-    msg = download_file(key, dl_path, config_path, src_path)
-    if not isinstance(msg, str):
-        msg = clip_file(key, dl_path, clip_path, min_lon, max_lon, min_lat, max_lat)
+    notices = []
+    steps = (
+        lambda: download_file(key, dl_path, config_path, src_path),
+        lambda: clip_file(key, dl_path, clip_path, min_lon, max_lon, min_lat, max_lat),
+        lambda: upload_file(key, clip_path, config_path, ul_path),
+    )
+    for step in steps:
+        name, rc, err = step()
+        if rc != 0:
+            return (name, rc, err), notices
+        if err.strip():
+            notices.append((name, err))
 
-        if not isinstance(msg, str):
-            msg = upload_file(key, clip_path, config_path, ul_path)
+    return None, notices
 
-    return msg
+
+def _one_line(text):
+    """Collapse a multi-line tool message onto one log line."""
+    return ' | '.join(line.strip() for line in text.strip().splitlines() if line.strip())
 
 
 ######################################################
@@ -511,13 +533,18 @@ def main(
         if do_check_target:
             print('-- Checking files in target.')
 
-            stdin = '\n'.join(src_files)
-            src_str = f'dl:{src_path}/'
-            cmd_str = f'rclone check {src_str} {dst_str} --missing-on-dst - --files-from-raw - --config={config_path} --fast-list'
-            cmd_list = shlex.split(cmd_str)
-            p = subprocess.run(cmd_list, input=stdin, capture_output=True, text=True, check=False)
-
-            src_files_new = [key for key in p.stdout.strip('\n').split('\n')]
+            # List what the target holds and download the rest. Not `rclone check --missing-on-dst`: it exits 1 both
+            # for "differences found" and for an error, and an error leaves stdout empty, which read as "nothing
+            # missing" (0.2.1 instead turned that empty output into the key '', a copy of the whole source root).
+            cmd_str = f'rclone lsf {dst_str} -R --files-only --fast-list --config={config_path}'
+            p = subprocess.run(shlex.split(cmd_str), capture_output=True, text=True, check=False)
+            if p.returncode == 3 and remote.get('type') == 'local':     # a local target directory not created yet
+                present = set()
+            elif p.returncode != 0:
+                raise RuntimeError(f'listing the target {dst_str} failed (rclone exit {p.returncode}): {p.stderr.strip()}')
+            else:
+                present = {key for key in p.stdout.split('\n') if key.strip()}
+            src_files_new = list(src_files - present)
         else:
             src_files_new = list(src_files)
 
@@ -539,16 +566,24 @@ def main(
                 futures[f1] = key
 
             counter = 0
+            failed = []
             for future in concurrent.futures.as_completed(futures):
                 key = futures[future]
-                msg = future.result()
+                failure, notices = future.result()
                 counter += 1
-                if isinstance(msg, str):
-                    print(f'{key} failed: {msg}')
-                else:
-                    if counter % 100 == 0 or counter == 1:
-                        print(f'{counter}')
-                        print(key)
+                for step, err in notices:
+                    print(f'NOTICE {step} {key}: {_one_line(err)}')
+                if failure is not None:
+                    step, rc, err = failure
+                    failed.append(key)
+                    print(f'FAILED {step} {key} rc={rc}: {_one_line(err)}', file=sys.stderr)
+                elif counter % 100 == 0 or counter == 1:
+                    print(f'{counter}')
+                    print(key)
+
+        if failed:
+            print(f'-- {len(failed)} of {len(src_files_new)} files FAILED', file=sys.stderr)
+            raise typer.Exit(code=1)
 
         print('Completed!')
     finally:

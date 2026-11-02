@@ -34,6 +34,7 @@ Single-package CLI (`era5_dl/era5_dl.py`) using Typer:
 4. **`query_source()`**: Queries only the YYYYMM directories within the date range (not recursive full-tree listing). Runs all rclone lsf calls in parallel via `ThreadPoolExecutor`.
 5. **`marshall()`**: Per-file pipeline: `download_file()` → `clip_file()` → `upload_file()`. Runs in parallel via `ProcessPoolExecutor` (spawn context).
 6. **CLI (`main()`)**: Loads `parameters.toml`, applies CLI overrides, resolves variables, then orchestrates query and download.
+7. **Failure handling (0.2.2)**: each step is judged by its tool's RETURN CODE, never by an empty stderr (rclone writes to stderr on success, e.g. after a retried transfer). A failed file or a failed listing makes the run exit 1; `NOTICE`/`FAILED` lines name the step. Tests: `era5_dl/tests/test_failures.py` drives the real `main` with fake `rclone`/`ncks` on PATH.
 
 Configuration is primarily via `parameters.toml` (copy from `parameters_example.toml`). CLI options override specific TOML values. Source/remote/sentry config stays TOML-only. `parameters.toml` is gitignored because it may contain credentials.
 

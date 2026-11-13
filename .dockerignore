@@ -1,0 +1,8 @@
+# Keep local configuration, environments and caches out of the image.
+# parameters.toml is git-ignored because it may hold credentials, and a pushed image is public.
+parameters.toml
+.git
+.claude
+.venv
+.pytest_cache
+**/__pycache__

@@ -24,6 +24,10 @@ docker-compose up -d
 docker-compose logs -f
 ```
 
+The image `mullenkamp/wrf-era5-dl` is built from this directory (`COPY .`) and pushed publicly. `.dockerignore`
+keeps the local `parameters.toml` (which may hold credentials), `.git`, `.claude` and `.venv` out of it. Image
+`2.1` (pushed 2026-11-10) carries era5-download `0.2.2`, the return-code failure handling.
+
 ## Architecture
 
 Single-package CLI (`era5_dl/era5_dl.py`) using Typer:
